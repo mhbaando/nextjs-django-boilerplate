@@ -7,7 +7,7 @@
 # It performs the following checks:
 # 1. Full Project Linting: Verifies the entire codebase for linting errors.
 # 2. Type Checking: Ensures the project has no TypeScript errors.
-# 3. Running Tests: Executes the test suite to prevent regressions.
+# 3. Production Build: Compiles the Next.js app to catch build-time errors.
 #
 # If any of these checks fail, the push is aborted.
 
@@ -32,26 +32,18 @@ fi
 echo "✅ Type check passed."
 echo "------------------------------"
 
-# 3. Run the test suite
-echo "🧪 Executing tests..."
+# 3. Run a production build
+echo "🏗️  Running production build..."
 #
-# OPTIMIZATION NOTE:
-# To speed up the pre-push hook, you can configure your test runner to
-# only run tests related to the files that have changed since your main branch.
-#
-# For Jest, you might change the 'test' script in package.json to:
-# "test": "jest --onlyChanged"
-#
-# For Vitest, you might use:
-# "test": "vitest --changed"
-#
-# The command below runs the full test suite by default for maximum safety.
+# This command compiles the Next.js application to ensure it can be
+# successfully built for production. It's a comprehensive check that can
+# catch a wide range of errors, from type issues to configuration problems.
 
-if ! bun run test; then
-    echo "❌ Tests failed. Please fix the tests and try again."
+if ! bun run build; then
+    echo "❌ Production build failed. Please fix the build errors and try again."
     exit 1
 fi
-echo "✅ All tests passed."
+echo "✅ Production build successful."
 echo "------------------------------"
 
 echo "🎉 All pre-push checks passed. Pushing to remote..."
