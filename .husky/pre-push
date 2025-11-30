@@ -1,50 +1,39 @@
+#!/bin/sh
 # --- Pre-Push Git Hook ---
 #
-# This hook is executed before you push code to a remote repository.
-# It's a critical safety net to ensure that code quality standards are met
-# before the code is shared with the team.
+# This hook is a final safety net executed before pushing to a remote repository.
+# It runs broad, project-wide checks to ensure overall stability.
 #
 # It performs the following checks:
-# 1. Full Project Linting: Verifies the entire codebase for linting errors.
-# 2. Type Checking: Ensures the project has no TypeScript errors.
-# 3. Production Build: Compiles the Next.js app to catch build-time errors.
+# 1. Type Checking: Ensures the entire project has no TypeScript errors.
+# 2. Production Build: Compiles the Next.js app to catch build-time errors.
+#
+# NOTE: Linting and formatting are handled by the `pre-commit` hook to provide
+# faster feedback to the developer.
 #
 # If any of these checks fail, the push is aborted.
 
 echo "🚀 Running Pre-Push Checks..."
-echo "------------------------------"
+echo "--------------------------------------------------------"
 
-# 1. Run the linter across the entire project
-echo "🔍 Linting codebase..."
-if ! bun run lint; then
-    echo "❌ Linter check failed. Please fix the errors and try again."
-    exit 1
-fi
-echo "✅ Linter check passed."
-echo "------------------------------"
-
-# 2. Run the type checker
-echo "🧐 Verifying TypeScript types..."
+# 1. Run the type checker across the entire project
+echo "1. Verifying TypeScript types..."
 if ! bun run type-check; then
     echo "❌ Type check failed. Please fix the type errors and try again."
     exit 1
 fi
 echo "✅ Type check passed."
-echo "------------------------------"
+echo "--------------------------------------------------------"
 
-# 3. Run a production build
-echo "🏗️  Running production build..."
-#
-# This command compiles the Next.js application to ensure it can be
-# successfully built for production. It's a comprehensive check that can
-# catch a wide range of errors, from type issues to configuration problems.
 
+# 2. Run a production build to catch any build-time errors
+echo "2. Running production build..."
 if ! bun run build; then
     echo "❌ Production build failed. Please fix the build errors and try again."
     exit 1
 fi
 echo "✅ Production build successful."
-echo "------------------------------"
+echo "--------------------------------------------------------"
 
 echo "🎉 All pre-push checks passed. Pushing to remote..."
 

@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "bunx eslint .",
+    "dev": "next dev",
     "format": "bunx prettier --write .",
+    "lint": "bunx eslint .",
     "prepare": "husky",
+    "start": "next start",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
