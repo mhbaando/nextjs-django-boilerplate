@@ -1,2 +1,15 @@
-echo "🔍 Running pre-commit checks with Bun..."
-bunx lint-staged
+echo "🔍 Running frontend checks (Bun + lint-staged)..."
+bunx lint-staged || exit 1
+
+echo "🐍 Running backend checks (Django + uv + pre‑commit)..."
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^server/.*\.py$' || true)
+
+if [ -n "$STAGED_PY" ]; then
+  echo "➡ Python files staged:"
+  echo "$STAGED_PY"
+  cd server || exit 1
+  uv run pre-commit run --files $STAGED_PY || exit 1
+  cd - || exit 1
+else
+  echo "✔ No Python files staged; skipping backend checks."
+fi
