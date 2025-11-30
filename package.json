@@ -1,0 +1,35 @@
+{
+  "name": "nextjs-django-boilerplate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "bunx eslint .",
+    "format": "bunx prettier --write .",
+    "prepare": "husky",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "16.0.6",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

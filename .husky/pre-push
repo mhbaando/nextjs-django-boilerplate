@@ -1,0 +1,59 @@
+# --- Pre-Push Git Hook ---
+#
+# This hook is executed before you push code to a remote repository.
+# It's a critical safety net to ensure that code quality standards are met
+# before the code is shared with the team.
+#
+# It performs the following checks:
+# 1. Full Project Linting: Verifies the entire codebase for linting errors.
+# 2. Type Checking: Ensures the project has no TypeScript errors.
+# 3. Running Tests: Executes the test suite to prevent regressions.
+#
+# If any of these checks fail, the push is aborted.
+
+echo "🚀 Running Pre-Push Checks..."
+echo "------------------------------"
+
+# 1. Run the linter across the entire project
+echo "🔍 Linting codebase..."
+if ! bun run lint; then
+    echo "❌ Linter check failed. Please fix the errors and try again."
+    exit 1
+fi
+echo "✅ Linter check passed."
+echo "------------------------------"
+
+# 2. Run the type checker
+echo "🧐 Verifying TypeScript types..."
+if ! bun run type-check; then
+    echo "❌ Type check failed. Please fix the type errors and try again."
+    exit 1
+fi
+echo "✅ Type check passed."
+echo "------------------------------"
+
+# 3. Run the test suite
+echo "🧪 Executing tests..."
+#
+# OPTIMIZATION NOTE:
+# To speed up the pre-push hook, you can configure your test runner to
+# only run tests related to the files that have changed since your main branch.
+#
+# For Jest, you might change the 'test' script in package.json to:
+# "test": "jest --onlyChanged"
+#
+# For Vitest, you might use:
+# "test": "vitest --changed"
+#
+# The command below runs the full test suite by default for maximum safety.
+
+if ! bun run test; then
+    echo "❌ Tests failed. Please fix the tests and try again."
+    exit 1
+fi
+echo "✅ All tests passed."
+echo "------------------------------"
+
+echo "🎉 All pre-push checks passed. Pushing to remote..."
+
+exit 0
