@@ -60,7 +60,7 @@ export async function loginUser(
     if (!credentials.email || !credentials.password) {
       return {
         error: true,
-        message: "Fadlan buuxi iimaylka iyo fure sireedka.",
+        message: "Please fill in both email and password.",
       };
     }
 
@@ -72,7 +72,12 @@ export async function loginUser(
 
     const response = await fetch(`${BASE_API_URL}/auth/login/`, {
       method: "POST",
-      headers,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...headers,
+      },
+
       body: JSON.stringify(credentials),
     });
 
@@ -95,9 +100,7 @@ export async function loginUser(
     return {
       error: true,
       message:
-        error instanceof Error
-          ? error.message
-          : "Khalad aan la aqoon ayaa dhacay.",
+        error instanceof Error ? error.message : "An unknown error occurred.",
     };
   }
 }
@@ -114,13 +117,14 @@ export async function verifyOTP(
     if (!credentials.email || !credentials.otp_code) {
       return {
         error: true,
-        message: "Fadlan buuxi iimaylka ama OTP-ga.",
+        message: "Please provide both email and OTP.",
       };
     }
 
     const response = await fetch(`${BASE_API_URL}/token/verify-otp/`, {
       method: "POST",
       headers: {
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(credentials),
@@ -131,10 +135,7 @@ export async function verifyOTP(
       const errorData = await response.json().catch(() => ({}));
       return {
         error: true,
-        message:
-          errorData.message ||
-          errorData.detail ||
-          `HTTP Error: ${response.status} ${response.statusText}`,
+        message: errorData.message || "An unexpected error occurred.",
       };
     }
 
@@ -149,9 +150,7 @@ export async function verifyOTP(
     return {
       error: true,
       message:
-        error instanceof Error
-          ? error.message
-          : "Khalad aan la aqoon ayaa dhacay.",
+        error instanceof Error ? error.message : "An unknown error occurred.",
     };
   }
 }
@@ -167,39 +166,77 @@ export async function refreshToken(
     if (!credentials.refresh) {
       return {
         error: true,
-        message: "Fadlan soo gali refresh token.",
+        message: "Please provide the refresh token.",
       };
     }
 
     const response = await fetch(`${BASE_API_URL}/auth/refresh/`, {
       method: "POST",
       headers: {
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       body: JSON.stringify(credentials),
     });
 
+    const data = await response.json();
+
     // Check if the response is not OK (non-2xx status)
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
       return {
         error: true,
         message:
-          errorData.message ||
-          errorData.detail ||
+          data.detail ||
+          data.message ||
           `HTTP Error: ${response.status} ${response.statusText}`,
       };
     }
 
-    const data: RefreshTokenResponse = await response.json();
-    return data;
+    return data as RefreshTokenResponse;
   } catch (error) {
     return {
       error: true,
       message:
-        error instanceof Error
-          ? error.message
-          : "Khalad aan la aqoon ayaa dhacay.",
+        error instanceof Error ? error.message : "An unknown error occurred.",
     };
   }
+}
+
+interface IChangePassword {
+  email: string;
+  current_password: string;
+  new_password: string;
+}
+
+export async function changePassword(data: IChangePassword) {
+  if (!data.email || !data.current_password || !data.new_password) {
+    return {
+      error: true,
+      message: "Please provide the required fields.",
+    };
+  }
+
+  const res = await fetch(`${BASE_API_URL}/auth/force-change-password/`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  // Check if the response is not OK (non-2xx status)
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    return {
+      error: true,
+      message:
+        errorData.message ||
+        errorData.detail ||
+        `HTTP Error: ${res.status} ${res.statusText}`,
+    };
+  }
+
+  const response: RefreshTokenResponse = await res.json();
+  return response;
 }
