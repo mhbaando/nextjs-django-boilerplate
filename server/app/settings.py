@@ -52,9 +52,7 @@ THIRD_PARTY_APPS = [
     "django_otp",
 ]
 
-LOCAL_APPS = [
-    # Add your local apps here, e.g., 'users.apps.UsersConfig'
-]
+LOCAL_APPS = ["users", "two_factor", "misc"]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -65,6 +63,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # ==============================================================================
 
 MIDDLEWARE = [
+    "app.middlewares.IPBlockMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -158,45 +157,66 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 # This storage engine handles compression and caching for you.
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
 # Media files are user-uploaded content.
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+AUTH_USER_MODEL = "users.User"
 
 # ==============================================================================
 # CACHING (REDIS) AND SESSIONS
 # ==============================================================================
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1")
+# Redis connection URL with fallback for development
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+
+# Robust Redis caching configuration
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "SOCKET_CONNECT_TIMEOUT": 5,
-            "SOCKET_TIMEOUT": 5,
-            "RETRY_ON_TIMEOUT": True,
+            "SOCKET_CONNECT_TIMEOUT": 5,  # 5 seconds connection timeout
+            "SOCKET_TIMEOUT": 5,  # 5 seconds socket timeout
+            "RETRY_ON_TIMEOUT": True,  # Retry on connection failures
+            "IGNORE_EXCEPTIONS": not DEBUG,  # Only ignore exceptions in production
+            "MAX_CONNECTIONS": 100,  # Maximum pool connections
+            "PICKLE_VERSION": -1,  # Use highest pickle protocol
         },
+        "KEY_PREFIX": "django",  # Namespace cache keys
     }
 }
 
-# Use Redis for session storage for better performance and scalability.
+# Use Redis for session storage for better performance and scalability
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
+
+# Session configuration optimized for Redis
+SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # ==============================================================================
 # CELERY CONFIGURATION (BACKGROUND TASKS)
 # ==============================================================================
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://127.0.0.1:6379/0")
+# Celery configuration with Redis as broker and result backend
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+# Celery task configuration for better performance and reliability
+CELERY_TASK_ALWAYS_EAGER = DEBUG  # Execute tasks synchronously in development
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 minutes soft time limit
+CELERY_TASK_TIME_LIMIT = 600  # 10 minutes hard time limit
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Process one task at a time
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 100  # Restart worker after 100 tasks
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 
 # ==============================================================================
@@ -206,6 +226,8 @@ CELERY_TIMEZONE = TIME_ZONE
 # --- DJANGO REST FRAMEWORK ---
 # https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
+    # Custom exception handler for consistent error responses
+    "EXCEPTION_HANDLER": "utils.exception_handler.custom_exception_handler",
     # Authentication & Permissions
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -225,9 +247,11 @@ REST_FRAMEWORK = {
     ],
     # Throttling (Rate Limiting)
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.AnonRateThrottle",  # For unauthenticated users (by IP)
+        "rest_framework.throttling.UserRateThrottle",  # For authenticated users (by user ID)
+        "rest_framework.throttling.ScopedRateThrottle",  # For specific, sensitive views
     ],
+    "DEFAULT_THROTTLE_RATES": {},  # Defined below based on DEBUG status
     # Filtering, Search & Ordering
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -248,6 +272,27 @@ if DEBUG:
     REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"].append(
         "rest_framework.renderers.BrowsableAPIRenderer"
     )
+
+    # Development-specific Redis settings
+    CACHES["default"]["OPTIONS"]["IGNORE_EXCEPTIONS"] = False
+
+    # More lenient rate limits for development to facilitate testing.
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+        "anon": "1000/minute",
+        "user": "5000/minute",
+        "login": "5/minute",
+        "otp": "3/minute",
+        "password_change": "3/minute",
+    }
+else:
+    # Stricter, production-ready rate limits.
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+        "anon": "100/hour",
+        "user": "1000/hour",
+        "login": "5/minute",  # Prevents brute-force on login
+        "otp": "3/minute",  # Prevents OTP spam/brute-force
+        "password_change": "5/minute",
+    }
 
 # --- SIMPLE JWT ---
 # https://django-rest-framework-simplejwt.readthedocs.io/en/latest/settings.html

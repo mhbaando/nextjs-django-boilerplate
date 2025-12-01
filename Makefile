@@ -21,7 +21,7 @@ help:
 	@echo "  make makemigrations  Create new database migrations"
 	@echo ""
 	@echo "Full Stack Commands:"
-	@echo "  make start           Start both frontend and backend servers"
+	@echo "  make start           Start both frontend and backend servers concurrently"
 	@echo "  make help            Show this help message"
 	@echo ""
 	@echo "Usage examples:"
@@ -29,25 +29,30 @@ help:
 	@echo "  make migrate         # Apply database changes"
 	@echo "  make makemigrations  # Create migration files"
 
-# Start both frontend and backend servers
-start: start-back start-front
+# Start both frontend and backend servers concurrently
+start:
+	@echo "🚀 Starting full development environment..."
+	@echo "Frontend: http://localhost:3000"
+	@echo "Backend:  http://localhost:8000"
+	@echo "--------------------------------------------------------"
+	@(make start-back & make start-front)
 
 # Start Next.js frontend development server
 start-front:
 	@echo "🚀 Starting Next.js frontend server..."
-	cd . && bun run dev
+	bun run dev
 
 # Start Django backend ASGI server
 start-back:
 	@echo "🐍 Starting Django backend server..."
-	cd server && uv run uvicorn app.asgi:application --reload --host 0.0.0.0 --port 8000
+	cd server && uv run --project . uvicorn app.asgi:application --reload --host 0.0.0.0 --port 8000
 
 # Apply database migrations
 migrate:
 	@echo "🗄️  Applying database migrations..."
-	cd server && uv run python manage.py migrate
+	cd server && uv run --project . python manage.py migrate
 
 # Create new database migrations
 makemigrations:
 	@echo "📝 Creating database migrations..."
-	cd server && uv run python manage.py makemigrations
+	cd server && uv run --project . python manage.py makemigrations
