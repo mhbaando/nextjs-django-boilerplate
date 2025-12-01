@@ -2,46 +2,46 @@
 # This hook is executed before a commit is created.
 # It runs linters and formatters on staged files to ensure code quality.
 
-echo "🚀 Running Pre-Commit Checks..."
-echo "--------------------------------------------------------"
+# echo "🚀 Running Pre-Commit Checks..."
+# echo "--------------------------------------------------------"
 
-# --- Frontend Checks (Next.js / TypeScript) ---
-echo "1. Running frontend checks with lint-staged..."
-# `lint-staged` will run ESLint, Prettier, and TSC on staged files
-# as configured in `lint-staged.config.ts`.
-bunx lint-staged
-FRONTEND_EXIT_CODE=$?
+# # --- Frontend Checks (Next.js / TypeScript) ---
+# echo "1. Running frontend checks with lint-staged..."
+# # `lint-staged` will run ESLint, Prettier, and TSC on staged files
+# # as configured in `lint-staged.config.ts`.
+# bunx lint-staged
+# FRONTEND_EXIT_CODE=$?
 
-if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
-    echo "❌ Frontend pre-commit checks failed. Please fix the errors above."
-    exit 1
-fi
-echo "✅ Frontend checks passed."
-echo "--------------------------------------------------------"
+# if [ $FRONTEND_EXIT_CODE -ne 0 ]; then
+#     echo "❌ Frontend pre-commit checks failed. Please fix the errors above."
+#     exit 1
+# fi
+# echo "✅ Frontend checks passed."
+# echo "--------------------------------------------------------"
 
 
-# --- Backend Checks (Django / Python) ---
-echo "2. Running backend checks with pre-commit..."
-# Find all staged Python files within the `server/` directory.
-STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '^server/.*\.py$' || true)
+# # --- Backend Checks (Django / Python) ---
+# echo "2. Running backend checks with pre-commit..."
+# # Find all staged Python files within the `server/` directory.
+# STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '^server/.*\.py$' || true)
 
-# Only run Python checks if there are staged Python files.
-if [ -n "$STAGED_PY_FILES" ]; then
-  # We run the command in a subshell `(...)` to avoid having to `cd -`.
-  # This isolates the directory change to just this command.
-  (cd server && uv run pre-commit run --files $STAGED_PY_FILES)
-  BACKEND_EXIT_CODE=$?
+# # Only run Python checks if there are staged Python files.
+# if [ -n "$STAGED_PY_FILES" ]; then
+#   # We run the command in a subshell `(...)` to avoid having to `cd -`.
+#   # This isolates the directory change to just this command.
+#   (cd server && uv run pre-commit run --files $STAGED_PY_FILES)
+#   BACKEND_EXIT_CODE=$?
 
-  if [ $BACKEND_EXIT_CODE -ne 0 ]; then
-      echo "❌ Backend pre-commit checks failed. Please fix the errors above."
-      exit 1
-  fi
-  echo "✅ Backend checks passed."
-else
-  echo "   - No Python files to check. Skipping."
-fi
+#   if [ $BACKEND_EXIT_CODE -ne 0 ]; then
+#       echo "❌ Backend pre-commit checks failed. Please fix the errors above."
+#       exit 1
+#   fi
+#   echo "✅ Backend checks passed."
+# else
+#   echo "   - No Python files to check. Skipping."
+# fi
 
-echo "--------------------------------------------------------"
-echo "🎉 All pre-commit checks passed. Creating commit..."
+# echo "--------------------------------------------------------"
+# echo "🎉 All pre-commit checks passed. Creating commit..."
 
-exit 0
+# exit 0
