@@ -34,6 +34,8 @@ const PUBLIC_ROUTES = [
   "/api/auth",
 ];
 
+import { validateVerificationParams } from "@/lib/verification";
+
 /**
  * A prioritized list of HTTP headers used to determine the client's real IP address.
  * The middleware iterates through this list and uses the first valid, public IP it finds.
@@ -54,8 +56,9 @@ const IP_FORWARDING_HEADERS = [
  * This pattern is generated once at module load time to avoid repeated compilation on each request.
  * It ensures that only full path segments are matched (e.g., `/sign-in` matches but `/sign-in-again` does not).
  */
-const publicPathRegex = new RegExp(`^(${PUBLIC_ROUTES.join("|")})($|/.*)`);
-
+function isPublicPath(pathname: string) {
+  return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+}
 /**
  * A pre-compiled regular expression to validate IPv4 and IPv6 addresses.
  */
@@ -80,20 +83,41 @@ interface AuthToken {
 }
 
 // --- Core Middleware Logic ---
-
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
+  const token = req.nextUrl.searchParams.get("token");
 
-  // 1. Bypass authentication for public routes for maximum performance.
-  if (publicPathRegex.test(pathname)) {
+  // Handle special verification routes
+  if (pathname === "/verify-otp" || pathname === "/change-password") {
+    if (!token) return redirectToSignIn(req, "token_missing");
+    const result = await validateVerificationParams(
+      token,
+      pathname === "/verify-otp" ? "otp" : "password_change",
+    );
+    if (!result.valid || !result.email) {
+      return redirectToSignIn(req, "invalid_token");
+    }
+    // Allow access to verification routes with valid token
+    return NextResponse.next();
+  } else if (pathname === "/forget-password") {
+    if (!token) return redirectToSignIn(req, "token_missing");
+    const result = await validateVerificationParams(token, "password_reset");
+    if (!result.valid) {
+      return redirectToSignIn(req, "invalid_token");
+    }
+    // Allow access to forget-password with valid token
     return NextResponse.next();
   }
 
-  // 2. For all other routes, validate the session token.
-  const token = (await getToken({ req })) as AuthToken | null;
+  // Bypass authentication for public routes.
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
 
-  // Securely check for a valid token and a string accessToken.
-  if (!token || typeof token.accessToken !== "string") {
+  // For all other private routes, validate the session token.
+  const sessionToken = (await getToken({ req })) as AuthToken | null;
+
+  if (!sessionToken || typeof sessionToken.accessToken !== "string") {
     return redirectToSignIn(req);
   }
 
@@ -101,8 +125,8 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const headers = new Headers(req.headers);
   const clientIp = getClientIp(req);
 
-  headers.set("X-Forwarded-For", clientIp); // Standard header for proxies
-  headers.set("X-Real-IP", clientIp); // Common header for client IP
+  headers.set("X-Forwarded-For", clientIp);
+  headers.set("X-Real-IP", clientIp);
 
   return NextResponse.next({ request: { headers } });
 }
@@ -145,11 +169,14 @@ function getClientIp(req: NextRequest): string {
  * @param req - The `NextRequest` that triggered the redirect.
  * @returns A `NextResponse` configured to redirect the user.
  */
-function redirectToSignIn(req: NextRequest): NextResponse {
+function redirectToSignIn(req: NextRequest, error?: string): NextResponse {
   const signInUrl = new URL("/sign-in", req.nextUrl.origin);
   const callbackUrl = req.nextUrl.pathname + req.nextUrl.search;
 
   signInUrl.searchParams.set("callbackUrl", callbackUrl);
+  if (error) {
+    signInUrl.searchParams.set("error", error);
+  }
 
   const response = NextResponse.redirect(signInUrl);
 
