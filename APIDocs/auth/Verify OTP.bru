@@ -1,0 +1,23 @@
+meta {
+  name: Verify OTP
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_api}}/token/verify-otp/
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email":"mo@test.com",
+    "otp_code":"084390"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
