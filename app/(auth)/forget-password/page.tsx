@@ -1,3 +1,4 @@
+import ForgetPasswordComponent from "@/components/auth/forgetPassword";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <div></div>;
+  return (
+    <div className="w-full h-full">
+      <ForgetPasswordComponent />
+    </div>
+  );
 }
