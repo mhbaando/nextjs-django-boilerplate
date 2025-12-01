@@ -106,23 +106,28 @@ const loginCredentialsProvider = CredentialsProvider({
 
     // Case 1: A standard authentication error occurred (e.g., wrong password)
     if (res.error) {
-      throw new Error(res.message || "Authentication failed.");
+      // Throw the specific error message from the server.
+      throw new Error(res.message);
     }
 
     // Case 2: Multi-step flow is required. Throw a structured error that the client can parse.
     if (res.otp_required) {
       throw new Error(
         JSON.stringify({
-          code: "OTP_REQUIRED",
-          user: { email: res.email },
+          error: true,
+          otp_required: true,
+          message: res.message || "OTP verification required",
+          email: res.email,
         }),
       );
     }
     if (res.change_password_required) {
       throw new Error(
         JSON.stringify({
-          code: "CHANGE_PASSWORD_REQUIRED",
-          user: { email: res.email },
+          error: true,
+          change_password_required: true,
+          message: res.message || "Password change required",
+          email: res.email,
         }),
       );
     }
