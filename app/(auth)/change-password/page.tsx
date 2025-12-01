@@ -1,3 +1,4 @@
+import ChangePasswordComponent from "@/components/auth/change-password";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <div></div>;
+  return (
+    <div className="w-full h-full">
+      <ChangePasswordComponent />
+    </div>
+  );
 }
