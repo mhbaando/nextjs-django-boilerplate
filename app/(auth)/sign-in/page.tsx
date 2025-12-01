@@ -1,4 +1,6 @@
+import SignInComponent from "@/components/auth/signIn";
 import { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -6,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <div></div>;
+  return (
+    <div className="w-full h-full">
+      <SignInComponent />
+    </div>
+  );
 }
