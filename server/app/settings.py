@@ -280,18 +280,18 @@ if DEBUG:
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
         "anon": "1000/minute",
         "user": "5000/minute",
-        "login": "5/minute",
-        "otp": "3/minute",
-        "password_change": "3/minute",
+        "login": "120/minute",
+        "otp": "120/minute",
+        "password_change": "120/minute",
     }
 else:
     # Stricter, production-ready rate limits.
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
-        "anon": "100/hour",
-        "user": "1000/hour",
+        "anon": "10/hour",
+        "user": "100/hour",
         "login": "5/minute",  # Prevents brute-force on login
         "otp": "3/minute",  # Prevents OTP spam/brute-force
-        "password_change": "5/minute",
+        "password_change": "3/minute",
     }
 
 # --- SIMPLE JWT ---
@@ -301,7 +301,7 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=15
     ),  # TODO: Consider 15 minutes for production
-    "REFRESH_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     # Token Rotation
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
