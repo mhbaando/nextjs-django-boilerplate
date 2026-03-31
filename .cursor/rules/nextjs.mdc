@@ -1,246 +1,282 @@
-You are an expert frontend engineer building scalable, production-grade Next.js applications.
+You are a senior frontend architect building scalable, production-grade Next.js applications.
 
-Follow ALL rules strictly.
+Follow ALL rules strictly. No exceptions.
 
-# 1. Core Stack Rules
+---
+
+# 1. CORE STACK (NON-NEGOTIABLE)
 
 - Framework: Next.js (App Router ONLY)
 - Language: TypeScript (strict mode)
-- Styling: Tailwind CSS ONLY
-- UI Library: shadcn/ui
-- State:
-  - Server state → TanStack Query
-  - Client state → Zustand (if needed)
-- Forms → React Hook Form + Zod
-- API calls → each feature will have istr sonw servercait on the same folder (no direct call in components)
+- Styling: Tailwind CSS (NO custom CSS except tokens)
+- UI: shadcn/ui (Radix-based, accessible)
+- Forms: React Hook Form + Zod
+- Server State: TanStack Query
+- Client State: Zustand (ONLY if needed)
+
+Reason:
+- App Router + Server Components improve performance and architecture :contentReference[oaicite:1]{index=1}
+- shadcn provides fully controllable UI code (no black box) :contentReference[oaicite:2]{index=2}
 
 ---
 
-# 2. Project Architecture (MANDATORY)
-
-Use FEATURE-BASED structure:
+# 2. PROJECT ARCHITECTURE (STRICT FEATURE-BASED)
 
 src/
+  app/
   features/
-    auth/
+    <feature-name>/
       components/
       actions/
-      hooks/
+      api/
       schemas/
+      hooks/
       types/
       utils/
-      api/
+      constants/
     users/
     dashboard/
-  components/       # shared components ONLY
-  lib/              # global utilities (api client, config, helpers)
-  hooks/            # shared hooks
-  types/            # global types
-  styles/           # global styles (design tokens)
-  app/              # Next.js app router
+  components/        # shared ONLY
+    ui/              # shadcn extended
+    shared/
+  lib/               # core infra (api client, config, auth, helpers)
+  hooks/             # global reusable hooks
+  types/             # global types
+  styles/            # design tokens ONLY
 
 ---
 
-# 3. Feature Rules
+# 3. FEATURE ISOLATION (CRITICAL)
 
-Each feature MUST be self-contained:
+Each feature MUST be fully self-contained.
 
-- components → UI specific to feature
-- actions → server actions ONLY
-- api → request functions
-- schemas → Zod validation
-- hooks → custom hooks
-- types → TS interfaces/types
+RULES:
+- No cross-feature imports
+- No shared logic inside features
+- No leaking types between features
 
-DO NOT:
-- Mix logic between features
-- Import across features unless absolutely necessary
+IF shared:
+→ move to `/lib`, `/components`, `/hooks`
 
-If shared → move to `/components` or `/lib`
+Each feature behaves like a mini-app.
 
 ---
 
-# 4. Component Design Rules
-
-- Keep components SMALL and reusable
-- Split large components into smaller units
-- One responsibility per component
-
-Example:
-❌ Bad:
-- DashboardPage handles everything
-
-✅ Good:
-- DashboardLayout
-- DashboardHeader
-- StatsCard
-- RecentActivityList
-
----
-
-# 5. Styling Rules (CRITICAL)
-
-- Use ONLY Tailwind classes
-- Use ONLY design tokens defined in global CSS
-
-Example:
-:root {
-  --primary: ...
-  --secondary: ...
-}
-
-Use:
-- bg-primary
-- text-primary
-- border-muted
-
-DO NOT:
-- Use arbitrary colors (e.g. bg-[#123456])
-- Hardcode colors
-- Use inline styles
-
----
-
-# 6. shadcn/ui Usage
-
-- Always use shadcn components over custom UI
-- No Native HTML Elemtns
-- Extend via className, NOT rewriting
-- Keep variants consistent
-
-Example:
-<Button variant="default" size="sm" />
-
----
-
-# 7. Server vs Client Rules
+# 4. SERVER-FIRST ARCHITECTURE (MANDATORY)
 
 DEFAULT → Server Components
 
 Use "use client" ONLY when:
-- using state
-- using hooks
-- handling events
+- React hooks
+- Browser APIs
+- Event handlers
 
-Rules:
-- Fetch data in Server Components
-- Mutations via Server Actions
-- Avoid unnecessary client-side fetching
-- use UseQuery for data feting to invoke svere aciton
-- use useMutation for mutating data
+RULES:
+- Data fetching → Server Components OR Server Actions
+- Mutations → Server Actions ONLY
+- NEVER fetch directly inside client components
 
 ---
 
-# 8. Data Fetching & API Rules
+# 5. DATA LAYER ARCHITECTURE
 
-- NEVER call fetch directly inside components
-- Use centralized API client (lib/api-client.ts)
+Each feature owns its data layer:
 
-Structure:
-- feature/feature_name/actions/*.ts → server actions
-- feature/feature_name/comonents/*.ts → server actions
-- - feature/feature_name/schema/*.ts → server actions
----
+features/<feature>/
+  api/        → pure request functions
+  actions/    → server actions
+  hooks/      → TanStack Query hooks
 
-# 9. Forms & Validation
+FLOW:
 
-- Use React Hook Form
-- Use Zod for schemas
+UI → hook → server action → api → backend
 
-Rules:
-- Schema must live in `/schemas` in each feature compoent s
-- Reuse schema for backend consistency
+STRICT RULES:
+- No fetch/axios in components
+- No business logic in UI
+- All API calls go through api/ layer
 
 ---
 
-# 10. Reusability Rules
+# 6. TANSTACK QUERY RULES
 
-- Extract reusable UI into:
-  /components/ui/
-  /components/shared/
+- useQuery → ONLY for fetching
+- useMutation → ONLY for mutations
+- Query keys MUST be centralized
 
-- Extract reusable logic into:
-  /hooks/
-  /lib/
+Example:
+queryKeys = {
+  users: ["users"],
+  user: (id) => ["user", id],
+}
+
+- Use server actions inside query/mutation
+- NEVER call API directly in hooks
 
 ---
 
-# 11. Naming Conventions
+# 7. COMPONENT DESIGN SYSTEM
+
+RULES:
+- One responsibility per component
+- Max ~150–200 lines per file
+- Split aggressively
+
+STRUCTURE:
+- Container (logic)
+- Presentational (UI)
+
+Example:
+UserPage → UserList → UserCard
+
+---
+
+# 8. SHADCN/UI RULES (STRICT)
+
+- ALWAYS use shadcn components
+- DO NOT use raw HTML (div/button/input) unless wrapped
+- Extend using className ONLY
+- NEVER rewrite base components
+
+Because:
+shadcn gives accessible, production-ready primitives :contentReference[oaicite:3]{index=3}
+
+---
+
+# 9. STYLING SYSTEM (DESIGN TOKENS ONLY)
+
+GLOBAL CSS:
+
+:root {
+  --primary: ...
+  --secondary: ...
+  --muted: ...
+}
+
+TAILWIND USAGE:
+
+✅ bg-primary
+✅ text-muted
+✅ border-border
+
+❌ FORBIDDEN:
+- bg-[#123456]
+- inline styles
+- random Tailwind values
+
+Tailwind v4 encourages token-based theming :contentReference[oaicite:4]{index=4}
+
+---
+
+# 10. FORMS & VALIDATION
+
+- React Hook Form ONLY
+- Zod ONLY
+
+RULES:
+- Schema per feature
+- Reuse schema between component if needed
+- No inline validation logic
+
+---
+
+# 11. NAMING CONVENTIONS
 
 - Components → PascalCase
 - Files → kebab-case
 - Hooks → useXxx
-- Actions → verb-based:
-  - createUser
-  - updateProfile
-  - deleteCase
+- Actions → verb-based
+
+Examples:
+create-user.ts
+use-users.ts
+user-card.tsx
 
 ---
 
-# 12. Performance Rules
+# 12. ERROR HANDLING (ENTERPRISE LEVEL)
 
-- Avoid unnecessary re-renders
-- Use memoization when needed
-- Lazy load heavy components
+- Standard error shape:
+
+{
+  error: boolean
+  message: string
+}
+
+RULES:
+- No raw errors shown to users
+- UI must handle loading / error / empty states
+
+---
+
+# 13. PERFORMANCE RULES
+
+- Prefer Server Components
 - Use Suspense for async UI
+- Lazy load heavy components
+- Avoid unnecessary re-renders
+- Memoize ONLY when needed
 
 ---
 
-# 13. Accessibility Rules
+# 14. SECURITY RULES
 
-- Always include:
-  - aria labels
-  - proper semantic HTML
+- No secrets in frontend
+- Validate ALL inputs with Zod
+- Use HTTP-only cookies
+- Sanitize all external data
+
+---
+
+# 15. ACCESSIBILITY
+
 - Use accessible shadcn components
+- Always include:
+  - aria-label
+  - keyboard support
+  - semantic structure
 
 ---
 
-# 14. Clean Code Rules
+# 16. CLEAN CODE (STRICT)
 
 - No unused imports
-- No console.log in production
-- No duplicated logic
-- Extract constants
-- fix linting errors
+- No console.log
+- No duplication
+- No large files
+- Fix ALL lint errors
 
 ---
 
-# 15. Error Handling
+# 17. IMPORT RULES
 
-- Handle API errors gracefully
-- Use consistent error format
-- Show user-friendly messages
+Use absolute imports ONLY:
 
----
-
-# 16. Security Rules
-
-- Never expose secrets in frontend
-- Validate all inputs via Zod
-- Use HTTP-only cookies for auth
-
----
-
-# 17. Absolute Imports
-
-Use:
 @/features/...
 @/components/...
 @/lib/...
 
-DO NOT use relative paths like ../../../
+❌ ../../../
 
 ---
 
-# 18. Code Splitting
+# 18. FILE SIZE & SPLITTING
 
-- Split by feature
-- Split large components
-- Keep files under ~200 lines
+- Max 200 lines per file
+- Split logic aggressively
+- Extract reusable parts early
 
 ---
 
-# 19. Example Feature Structure
+# 19. TESTING (REQUIRED FOR SCALE)
+
+- Unit → Vitest
+- Component → React Testing Library
+- E2E → Playwright
+
+---
+
+# 20. FOLDER EXAMPLE (GOLD STANDARD)
 
 features/auth/
 
@@ -252,23 +288,51 @@ features/auth/
     login.ts
     verify-otp.ts
 
-  schemas/
-    login.schema.ts
-
   api/
     auth.api.ts
 
+  schemas/
+    login.schema.ts
+
   hooks/
-    useAuth.ts
+    use-auth.ts
 
   types/
     auth.types.ts
 
+  utils/
+    auth.utils.ts
+
 ---
 
-# 20. General Principles
+# 21. ANTI-PATTERNS (FORBIDDEN)
 
-- Write clean, scalable, maintainable code
-- Prefer simplicity over cleverness
-- Prefer composition over inheritance
-- Always think in reusable units
+❌ Fetch inside components
+❌ Business logic in UI
+❌ Global state for everything
+❌ Massive components
+❌ Cross-feature coupling
+❌ Hardcoded styles
+
+---
+
+# 22. ENGINEERING PRINCIPLES
+
+- Server-first mindset
+- Feature isolation
+- Composition over inheritance
+- Reusability over duplication
+- Simplicity over cleverness
+
+---
+
+# 23. OUTPUT EXPECTATION
+
+All generated code MUST:
+- Follow feature-based architecture
+- Use server actions correctly
+- Use shadcn components
+- Respect design tokens
+- Be production-ready
+
+NO shortcuts. NO hacks. NO exceptions.
