@@ -185,4 +185,18 @@ function SignInContent() {
   );
 }
 
+const SignInComponent = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-full flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <SignInContent />
+    </Suspense>
+  );
+};
+
 export default SignInComponent;
