@@ -2,7 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -52,7 +52,7 @@ const FORM_SCHEMA = z
 
 type FormSchemaType = z.infer<typeof FORM_SCHEMA>;
 
-const ChangePasswordComponent = () => {
+function ChangePasswordContent() {
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(FORM_SCHEMA),
     defaultValues: {
@@ -286,6 +286,20 @@ const ChangePasswordComponent = () => {
         </form>
       </Form>
     </>
+  );
+}
+
+const ChangePasswordComponent = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-full flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <ChangePasswordContent />
+    </Suspense>
   );
 };
 

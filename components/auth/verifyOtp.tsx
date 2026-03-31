@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -48,7 +48,7 @@ interface OtpDeviceInfo {
   country: string;
 }
 
-const VerifyOtpComponent = () => {
+function VerifyOtpContent() {
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(FORM_SCHEMA),
     defaultValues: {
@@ -232,6 +232,20 @@ const VerifyOtpComponent = () => {
         </Button>
       </form>
     </Form>
+  );
+}
+
+const VerifyOtpComponent = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-full flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <VerifyOtpContent />
+    </Suspense>
   );
 };
 

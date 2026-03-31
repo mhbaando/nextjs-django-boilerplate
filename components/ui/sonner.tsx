@@ -28,12 +28,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
+          description: "",
           actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-red-500!",
           // Apply custom colors
           success: "!bg-[hsl(142,76%,95%)] !text-[hsl(142,76%,36%)] !border-[hsl(142,76%,85%)]",
-          error: "!bg-[hsl(0,84%,95%)] !text-[hsl(0,84%,46%)] !border-[hsl(0,84%,85%)]",
+          error: "!bg-[hsl(0,84%,95%)] text-red-500! !border-[hsl(0,84%,85%)]",
           info: "!bg-[hsl(221,91%,95%)] !text-[hsl(221,91%,46%)] !border-[hsl(221,91%,85%)]",
           warning: "!bg-[hsl(38,92%,95%)] !text-[hsl(38,92%,46%)] !border-[hsl(38,92%,85%)]",
         },

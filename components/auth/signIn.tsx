@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2, LogIn } from "lucide-react";
@@ -39,7 +39,7 @@ const FORM_SCHEMA = z.object({
 
 type FormSchemaType = z.infer<typeof FORM_SCHEMA>;
 
-const SignInComponent = () => {
+function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
@@ -183,6 +183,6 @@ const SignInComponent = () => {
       </Form>
     </>
   );
-};
+}
 
 export default SignInComponent;
