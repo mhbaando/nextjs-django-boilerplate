@@ -171,8 +171,6 @@ Naming conventions (backend):
 
 Checked for repository-specific AI instruction files:
 
-- `.cursor/rules/` -> not present
-- `.cursorrules` -> not present
-- `.github/copilot-instructions.md` -> not present
+- `.cursor/rules/` -> use this on each funcatilait and calls
 
-If these files are added later, treat them as high-priority instructions and update this document.
+these files treat them as high-priority instructions and update this document.
