@@ -1,11 +1,16 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import z from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { signIn } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
+
+import { verifyOtpAction } from "@/actions/auth/verifyOtp";
+import { getFullDeviceInfo, type DeviceInfo } from "@/lib/deviceInfo";
+import { validateVerificationParamsAction } from "@/lib/verification";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,12 +25,10 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Loader2 } from "lucide-react";
 import {
   showErrorToast,
   showSuccessToast,
 } from "@/components/ui/notifications";
-import { validateVerificationParamsAction } from "@/lib/verification";
 
 const FORM_SCHEMA = z.object({
   otp: z.string().min(6, {
@@ -35,15 +38,17 @@ const FORM_SCHEMA = z.object({
 
 type FormSchemaType = z.infer<typeof FORM_SCHEMA>;
 
-interface VerifyOtpError {
-  error?: string;
-  message?: string;
-  status: number;
-  ok: boolean;
-  url: string | null;
+interface OtpDeviceInfo {
+  platform: string;
+  device: string;
+  browser: string;
+  os: string;
+  ip: string;
+  city: string;
+  country: string;
 }
 
-const VerifyOtpComponent: React.FC = () => {
+const VerifyOtpComponent = () => {
   const form = useForm<FormSchemaType>({
     resolver: zodResolver(FORM_SCHEMA),
     defaultValues: {
@@ -55,6 +60,28 @@ const VerifyOtpComponent: React.FC = () => {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState<string | null>(null);
   const [callbackUrl, setCallbackUrl] = useState<string>("/");
+
+  const [deviceInfo, setDeviceInfo] = useState<OtpDeviceInfo | null>(null);
+
+  useEffect(() => {
+    const loadDeviceInfo = async () => {
+      const info: DeviceInfo = await getFullDeviceInfo();
+
+      const transformedInfo: OtpDeviceInfo = {
+        platform: info.platform || "Browser",
+        device: info.device || "Unknown",
+        browser: info.browser || "Unknown",
+        os: info.os || "Unknown",
+        ip: info.ip_address || "",
+        city: info.city || "Unknown",
+        country: info.country || "Unknown",
+      };
+
+      setDeviceInfo(transformedInfo);
+    };
+
+    loadDeviceInfo();
+  }, []);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -90,20 +117,36 @@ const VerifyOtpComponent: React.FC = () => {
   }, [searchParams, router]);
 
   const { mutate, isPending } = useMutation({
-    mutationFn: async (data: FormSchemaType) => {
-      if (!email) throw new Error("Email is required");
+    mutationFn: async ({ otp }: { otp: string }) => {
+      if (!email) {
+        return {
+          error: true as const,
+          message: "Email is missing. Please restart sign-in.",
+        };
+      }
 
-      const res = await signIn("otp", {
-        email: email,
-        otp_code: data.otp,
-        redirect: false,
+      if (!deviceInfo) {
+        return {
+          error: true as const,
+          message: "Device information is still loading. Please try again.",
+        };
+      }
+
+      return verifyOtpAction({
+        email,
+        code: otp,
+        deviceInfo,
       });
-
-      if (res?.error) throw res;
-      return res;
     },
 
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.error) {
+        showErrorToast({
+          message: data.message,
+        });
+        return;
+      }
+
       showSuccessToast({
         message: "OTP verified successfully!",
       });
@@ -111,28 +154,9 @@ const VerifyOtpComponent: React.FC = () => {
       // Redirect to the callback URL or home page
       router.push(callbackUrl);
     },
-    onError: async (error: VerifyOtpError) => {
-      // Parse the error.error if it's a JSON string (this is where NextAuth stores the error)
-      let parsedError: {
-        error?: boolean;
-        message?: string;
-      } | null = null;
-
-      if (error.error) {
-        try {
-          parsedError = JSON.parse(error.error);
-        } catch {
-          // If parsing fails, use the string as is
-          parsedError = { message: error.error };
-        }
-      }
-
+    onError: (error: Error) => {
       showErrorToast({
-        message:
-          parsedError?.message ||
-          error.error ||
-          error.message ||
-          "Failed to verify OTP",
+        message: error.message || "Failed to verify OTP",
       });
     },
   });
@@ -192,7 +216,11 @@ const VerifyOtpComponent: React.FC = () => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full" disabled={isPending || !email}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isPending || !email || !deviceInfo}
+        >
           {isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

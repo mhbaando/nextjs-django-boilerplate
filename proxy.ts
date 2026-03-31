@@ -1,32 +1,13 @@
-/**
- * @file Next.js Middleware for request proxying and authentication.
- *
- * @description
- * This middleware serves as the primary entry point for incoming requests. It is engineered for
- * performance and security, handling three main responsibilities:
- * 1.  **Routing**: Efficiently bypasses authentication for predefined public routes.
- * 2.  **Authentication**: Verifies the presence of a valid session token for all private routes.
- * 3.  **Request Enrichment**: Securely identifies the client's real IP address and forwards it
- *     in the request headers for consumption by API routes or backend services.
- *
- * This module should be imported and used within the primary `middleware.ts` file.
- */
+import { NextRequest, NextResponse } from "next/server";
+import { validateVerificationParams } from "@/lib/verification";
 
-// Development mode flag - only filter private IPs in production
+// --- Configuration ---
+
 const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
 
-import { getToken } from "next-auth/jwt";
-import { NextResponse, type NextRequest } from "next/server";
-
-// --- Configuration Constants ---
-
-/**
- * An array of route prefixes that are publicly accessible and do not require authentication.
- * Optimized for fast checking using a pre-compiled regular expression.
- * @see {@link publicPathRegex}
- */
 const PUBLIC_ROUTES = [
   "/sign-in",
+  "/forget-password",
   "/_next",
   "/static",
   "/favicon.ico",
@@ -34,13 +15,8 @@ const PUBLIC_ROUTES = [
   "/api/auth",
 ];
 
-import { validateVerificationParams } from "@/lib/verification";
+const SEMI_PUBLIC_ROUTES = ["/verify-otp", "/change-password"];
 
-/**
- * A prioritized list of HTTP headers used to determine the client's real IP address.
- * The middleware iterates through this list and uses the first valid, public IP it finds.
- * The order reflects a trust hierarchy, from custom/trusted headers to standard ones.
- */
 const IP_FORWARDING_HEADERS = [
   "x-forwarded-for",
   "x-real-ip",
@@ -49,108 +25,89 @@ const IP_FORWARDING_HEADERS = [
   "x-vercel-forwarded-for",
 ];
 
-// --- Pre-compiled Patterns for Performance ---
+// --- Regex Helpers ---
 
-/**
- * A pre-compiled regular expression for efficiently matching public routes.
- * This pattern is generated once at module load time to avoid repeated compilation on each request.
- * It ensures that only full path segments are matched (e.g., `/sign-in` matches but `/sign-in-again` does not).
- */
-function isPublicPath(pathname: string) {
-  return PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
-}
-/**
- * A pre-compiled regular expression to validate IPv4 and IPv6 addresses.
- */
 const ipAddressRegex =
   /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,7}:|^(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}$|^(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}$|^(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:(?:(?::[0-9a-fA-F]{1,4}){1,6})$|^:(?:(?::[0-9a-fA-F]{1,4}){1,7}|:)$|^(?:fe80:(?::[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,})$|^(?:(?:0{1,4}:){1,6})?:(?:[0-9a-fA-F]{1,4}|0)$|^(?:[0-9a-fA-F]{1,4}:){6}(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-
-/**
- * A pre-compiled regular expression that identifies private, loopback, and reserved IP ranges
- * for both IPv4 and IPv6 to find the first public-facing IP.
- */
 const privateIpRegex =
   /^(::1|::ffff:127\.|fe80:|fc00:|fd00:|10\.|127\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)/;
 
-// --- Type Definitions ---
-
 /**
- * Defines the expected structure of the NextAuth session token.
+ * Middleware Matcher
  */
-interface AuthToken {
-  accessToken?: unknown;
-  user?: { id: string; email: string };
-}
+export const config = {
+  matcher: ["/((?!api/|_next/static|_next/image|favicon.ico|.*\\.).*)"],
+};
 
-// --- Core Middleware Logic ---
-export async function proxy(req: NextRequest): Promise<NextResponse> {
-  const { pathname } = req.nextUrl;
-  const token = req.nextUrl.searchParams.get("token");
+// --- Core Logic ---
 
-  // Handle special verification routes
-  if (pathname === "/verify-otp" || pathname === "/change-password") {
-    if (!token) return redirectToSignIn(req, "token_missing");
+export default async function proxy(req: NextRequest) {
+  const { pathname, searchParams } = req.nextUrl;
+  const tokenParam = searchParams.get("token");
+
+  const isPublic = PUBLIC_ROUTES.some((route) => pathname.startsWith(route));
+  const isSemiPublic = SEMI_PUBLIC_ROUTES.includes(pathname);
+  const isAuthenticated = !!req.cookies.get("app_session")?.value;
+
+  /**
+   * 1. Handle Semi-Public Routes (Token Validation)
+   */
+  if (isSemiPublic) {
+    if (!tokenParam) return redirectToSignIn(req, "token_missing");
+
     const result = await validateVerificationParams(
-      token,
-      pathname === "/verify-otp" ? "otp" : "password_change",
+      tokenParam,
+      pathname === "/verify-otp"
+        ? "otp"
+        : pathname === "/change-password"
+          ? "password_change"
+          : "password_reset",
     );
+
     if (!result.valid || !result.email) {
-      return redirectToSignIn(req, "invalid_token");
+      return redirectToSignIn(req);
     }
-    // Allow access to verification routes with valid token
-    return NextResponse.next();
-  } else if (pathname === "/forget-password") {
-    if (!token) return redirectToSignIn(req, "token_missing");
-    const result = await validateVerificationParams(token, "password_reset");
-    if (!result.valid) {
-      return redirectToSignIn(req, "invalid_token");
-    }
-    // Allow access to forget-password with valid token
-    return NextResponse.next();
   }
 
-  // Bypass authentication for public routes.
-  if (isPublicPath(pathname)) {
-    return NextResponse.next();
-  }
-
-  // For all other private routes, validate the session token.
-  const sessionToken = (await getToken({ req })) as AuthToken | null;
-
-  if (!sessionToken || typeof sessionToken.accessToken !== "string") {
+  /**
+   * 2. Auth Guards
+   */
+  // Redirect unauthenticated users trying to access private pages
+  if (!isAuthenticated && !isPublic && !isSemiPublic) {
     return redirectToSignIn(req);
   }
 
-  // 3. Enrich request with the client's real IP and proceed.
-  const headers = new Headers(req.headers);
+  // Redirect authenticated users away from public pages (like sign-in) to home
+  if (isAuthenticated && isPublic && pathname === "/sign-in") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  /**
+   * 3. IP Proxying & Header Enrichment
+   */
   const clientIp = getClientIp(req);
+  const requestHeaders = new Headers(req.headers);
 
-  headers.set("X-Forwarded-For", clientIp);
-  headers.set("X-Real-IP", clientIp);
+  requestHeaders.set("X-Forwarded-For", clientIp);
+  requestHeaders.set("X-Real-IP", clientIp);
 
-  return NextResponse.next({ request: { headers } });
+  // Return next() with the enriched headers, but NO tenant rewrites
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
-// --- Helper Functions ---
+// --- Helpers ---
 
-/**
- * Securely extracts the client IP address from request headers.
- * In development mode: Allows private IPs for local development
- * In production mode: Only allows public IPs for security
- * @param req - The incoming `NextRequest`.
- * @returns The determined IP address or '127.0.0.1' as a fallback.
- */
 function getClientIp(req: NextRequest): string {
   for (const headerName of IP_FORWARDING_HEADERS) {
     const headerValue = req.headers.get(headerName);
     if (headerValue) {
-      // Headers like X-Forwarded-For can contain a list of IPs.
-      // The client's IP is typically the first one in the list.
       const ips = headerValue.split(",").map((ip) => ip.trim());
       for (const ip of ips) {
         if (ipAddressRegex.test(ip)) {
-          // In development, allow private IPs for local testing
-          // In production, only allow public IPs for security
           if (IS_DEVELOPMENT || !privateIpRegex.test(ip)) {
             return ip;
           }
@@ -158,31 +115,19 @@ function getClientIp(req: NextRequest): string {
       }
     }
   }
-  // Fallback if no valid IP is found.
   return "127.0.0.1";
 }
 
-/**
- * Constructs a redirect response to the sign-in page, preserving the user's
- * originally intended destination as a callback URL. It also clears session
- * cookies to ensure a clean login flow.
- * @param req - The `NextRequest` that triggered the redirect.
- * @returns A `NextResponse` configured to redirect the user.
- */
 function redirectToSignIn(req: NextRequest, error?: string): NextResponse {
   const signInUrl = new URL("/sign-in", req.nextUrl.origin);
   const callbackUrl = req.nextUrl.pathname + req.nextUrl.search;
 
   signInUrl.searchParams.set("callbackUrl", callbackUrl);
-  if (error) {
-    signInUrl.searchParams.set("error", error);
-  }
+  if (error) signInUrl.searchParams.set("error", error);
 
   const response = NextResponse.redirect(signInUrl);
 
-  // Clean up session cookies on redirect.
-  response.cookies.delete("__Secure-next-auth.session-token");
-  response.cookies.delete("next-auth.session-token");
-
+  // Clear any stale session cookies on a forced redirect to sign-in
+  response.cookies.delete("app_session");
   return response;
 }

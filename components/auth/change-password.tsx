@@ -1,8 +1,8 @@
 "use client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import z from "zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +17,11 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Eye, EyeOff } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { changePassword } from "@/actions/auth/login";
-import { showErrorToast, showSuccessToast } from "../ui/notifications";
+import { changePasswordAction } from "@/actions/auth/changePasswordAction";
+import {
+  showErrorToast,
+  showSuccessToast,
+} from "@/components/ui/notifications";
 import { useSearchParams, useRouter } from "next/navigation";
 import { validateVerificationParamsAction } from "@/lib/verification";
 
@@ -60,7 +63,6 @@ const ChangePasswordComponent = () => {
     mode: "onChange",
   });
 
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -68,17 +70,24 @@ const ChangePasswordComponent = () => {
   const [email, setEmail] = useState<string | null>(null);
   const [callbackUrl, setCallbackUrl] = useState<string>("/");
   const searchParams = useSearchParams();
-  const watchedNewPassword = form.watch("newPassword");
+  const watchedNewPassword = useWatch({
+    control: form.control,
+    name: "newPassword",
+  });
 
-  useEffect(() => {
+  const passwordStrength = useMemo(() => {
     let strength = 0;
-    if (watchedNewPassword) {
-      if (watchedNewPassword.length >= 8) strength += 25;
-      if (/[A-Z]/.test(watchedNewPassword)) strength += 25;
-      if (/[0-9]/.test(watchedNewPassword)) strength += 25;
-      if (/[^A-Za-z0-9]/.test(watchedNewPassword)) strength += 25;
+
+    if (!watchedNewPassword) {
+      return strength;
     }
-    setPasswordStrength(strength);
+
+    if (watchedNewPassword.length >= 8) strength += 25;
+    if (/[A-Z]/.test(watchedNewPassword)) strength += 25;
+    if (/[0-9]/.test(watchedNewPassword)) strength += 25;
+    if (/[^A-Za-z0-9]/.test(watchedNewPassword)) strength += 25;
+
+    return strength;
   }, [watchedNewPassword]);
 
   useEffect(() => {
@@ -119,22 +128,30 @@ const ChangePasswordComponent = () => {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data: FormSchemaType) => {
-      if (!email) throw new Error("Email is required");
+      if (!email) {
+        return {
+          error: true as const,
+          message: "Email is missing. Please restart sign-in.",
+        };
+      }
 
-      const res = await changePassword({
-        email: email,
-        current_password: data.currentPassword,
-        new_password: data.newPassword,
+      return changePasswordAction({
+        email,
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
       });
-
-      if (res.error)
-        throw new Error(res.message || "Failed to change password");
-      return res;
     },
 
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.error) {
+        showErrorToast({
+          message: data.message,
+        });
+        return;
+      }
+
       showSuccessToast({
-        message: "Your password has been successfully changed.",
+        message: data.message,
       });
 
       router.push(callbackUrl);
@@ -148,7 +165,6 @@ const ChangePasswordComponent = () => {
 
   const onSubmit = (data: FormSchemaType) => {
     mutate(data);
-    // Handle change password logic here (e.g., API call)
   };
 
   return (

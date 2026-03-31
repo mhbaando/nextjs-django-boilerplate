@@ -38,7 +38,7 @@ class Login(APIView):
                     "error": True,
                     "message": "The credentials you entered are incorrect.",
                 },
-                status=status.HTTP_401_UNAUTHORIZED,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # New: Check if the user must change their password

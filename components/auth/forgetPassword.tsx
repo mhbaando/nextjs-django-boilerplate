@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { showSuccessToast } from "@/components/ui/notifications";
 
 const FORM_SCHEMA = z.object({
   email: z.string().email({
@@ -31,8 +32,9 @@ const ForgetPasswordComponent = () => {
   });
 
   const onSubmit = (data: FormSchemaType) => {
-    console.log("Password reset requested for:", data.email);
-    // Handle password reset logic here (e.g., API call)
+    showSuccessToast({
+      message: `Password reset flow is not configured yet for ${data.email}.`,
+    });
   };
 
   return (
