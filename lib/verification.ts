@@ -1,4 +1,3 @@
-// lib/verification.ts
 "use server";
 
 import { jwtVerify, SignJWT } from "jose";
@@ -7,14 +6,13 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.NEXTAUTH_SECRET || "fallback-secret-key",
 );
 
-// Define all verification types
-type VerificationType = "otp" | "password_reset" | "password_change";
+export type VerificationType = "otp" | "password_reset" | "password_change";
 
 /**
  * Generate a secure verification token for programmatic navigation (server-side only)
  */
 export async function generateVerificationToken(
-  type: VerificationType, // Changed from "otp" to VerificationType
+  type: VerificationType,
   email: string,
   callbackUrl?: string,
 ): Promise<string> {
@@ -51,7 +49,7 @@ export async function generateVerificationToken(
  */
 export async function verifyVerificationToken(
   token: string,
-  expectedType: VerificationType, // Changed from string to VerificationType
+  expectedType: VerificationType,
 ): Promise<{
   valid: boolean;
   email?: string;
@@ -85,7 +83,7 @@ export async function verifyVerificationToken(
  * Create verification URL with secure token (server-side only)
  */
 export async function createVerificationUrl(
-  type: VerificationType, // Changed from "otp" to VerificationType
+  type: VerificationType,
   email: string,
   basePath: string,
   callbackUrl?: string,
@@ -103,9 +101,6 @@ export async function createVerificationUrl(
   const url = new URL(basePath, baseUrl);
   url.searchParams.set("token", token);
 
-  console.log(
-    `[Verification] Created secure verification URL for ${type}: ${url.toString()}`,
-  );
   return url.toString();
 }
 
@@ -113,7 +108,7 @@ export async function createVerificationUrl(
  * Create verification redirect with secure token (server-side only)
  */
 export async function createVerificationRedirect(
-  type: VerificationType, // Changed from "otp" to VerificationType
+  type: VerificationType,
   email: string,
   fallbackPath: string,
   callbackUrl?: string,
@@ -122,10 +117,6 @@ export async function createVerificationRedirect(
   redirectUrl: string;
   method: "secure_token";
 }> {
-  console.log(
-    `[Verification] Creating secure ${type} verification URL for ${email}`,
-  );
-
   const redirectUrl = await createVerificationUrl(
     type,
     email,
@@ -145,7 +136,7 @@ export async function createVerificationRedirect(
  */
 export async function validateVerificationParams(
   token: string | null,
-  expectedType: VerificationType, // Changed from string to VerificationType
+  expectedType: VerificationType,
 ): Promise<{
   valid: boolean;
   email?: string;
@@ -167,7 +158,7 @@ export async function validateVerificationParams(
  */
 export async function validateVerificationParamsAction(
   token: string | null,
-  expectedType: VerificationType, // Changed from string to VerificationType
+  expectedType: VerificationType,
 ): Promise<{
   valid: boolean;
   email?: string;

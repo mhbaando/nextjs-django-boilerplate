@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { CheckCircle, XCircle } from "lucide-react";
+import { CircleCheck, OctagonX } from "lucide-react";
 
 interface ToastOptions {
   title?: string;
@@ -17,7 +17,7 @@ interface ToastOptions {
 export const showSuccessToast = ({ title = "Success", message }: ToastOptions) => {
   toast.success(title, {
     description: message,
-    icon: <CheckCircle className="h-5 w-5" />,
+    icon: <CircleCheck className="h-4 w-4" />,
     duration: 3000,
   });
 };
@@ -31,7 +31,7 @@ export const showSuccessToast = ({ title = "Success", message }: ToastOptions) =
 export const showErrorToast = ({ title = "Error", message }: ToastOptions) => {
   toast.error(title, {
     description: message,
-    icon: <XCircle className="h-5 w-5" />,
+    icon: <OctagonX className="h-4 w-4" />,
     duration: 5000,
   });
 };
