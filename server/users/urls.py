@@ -3,14 +3,13 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from .views import ForceChangePassword, Login
+from .views import AuthView, UserCRUDView
 
 urlpatterns = [
-    path("login/", Login.as_view(), name="login"),
-    path("refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    path(
-        "force-change-password/",
-        ForceChangePassword.as_view(),
-        name="force_change_password",
-    ),
+    # Authentication endpoints (all handled by AuthView)
+    path("auth/", AuthView.as_view(), name="auth"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # User CRUD endpoints (all handled by UserCRUDView)
+    path("users/", UserCRUDView.as_view(), name="users"),
+    path("users/<uuid:user_id>/", UserCRUDView.as_view(), name="user_detail"),
 ]
